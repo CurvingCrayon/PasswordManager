@@ -4,7 +4,7 @@
 
 
 #define DB_NAME "./database.txt"
-#define MAX_NAME_LENGTH 4
+#define MAX_NAME_LENGTH 20
 #define MAX_USER_LENGTH 20
 #define MAX_PASS_LENGTH 20
 #define MAX_SERVICES 100
@@ -153,6 +153,57 @@ void display_services(service_t services[], int num_services){
 	}
 }
 
+void save_services(service_t services[], int num_services){
+	FILE* db_file = fopen(DB_NAME, "w"); /*Open file as read text */
+	if(db_file == NULL){ /*If file doesnt exist*/
+		printf("Write error\n");
+		return;
+	}
+	int service_num;
+	for(service_num = 0; service_num < num_services; service_num++){
+		service_t sv = services[service_num];
+		fprintf(db_file, "%s %s %s\n", sv.name, sv.user, sv.pass);
+	}
+	fclose(db_file);
+}
+
+int load_services(service_t services[], int num_services){
+	FILE* db_file = fopen(DB_NAME, "r"); /*Open file as read text */
+	
+	if(db_file == NULL){ /*If file doesn't exist */
+		printf("Read error\n");
+		return num_services;
+	}
+	
+	/*Get number of lines in file*/
+	int num_lines = 0;
+	while( !feof(db_file) ){
+		char next_char = fgetc(db_file);
+		if(next_char == '\n'){
+			num_lines++;
+		}
+	}
+	
+	rewind(db_file); /*Point back to start of file */
+	
+	/* Go through each line of the file */
+	int new_num_services = 0;
+	int line_num;
+	for(line_num = 0; line_num < MAX_SERVICES; line_num++){
+		if(line_num < num_lines){ /*If there is still data left in file*/
+			service_t sv;
+			fscanf(db_file, "%s %s %s", sv.name, sv.user, sv.pass);
+			services[line_num] = sv;
+			new_num_services++;
+		}
+		else{
+			break;
+		}
+	}
+	fclose(db_file);
+	return new_num_services;
+}
+
 
 
 int main(){
@@ -170,13 +221,13 @@ int main(){
 				display_services(services, num_services);
 			break;
 			
-			/*case 3:
+			case 3:
 				save_services(services, num_services);
 			break;
 			
 			case 4:
 				num_services = load_services(services, num_services);
-			break;*/
+			break;
 			
 			case 5:
 				exit = 1;
