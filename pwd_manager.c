@@ -80,7 +80,7 @@ int get_instruction (void){
 		get_input(command, 2); 
 
 		int command_num = atoi(command);
-		if(command_num > 0 && command_num < 6){ /*Check command_num is between 1 and 5*/
+		if(command_num > 0 && command_num < 7){ /*Check command_num is between 1 and 5*/
 			valid = 1;
 			return command_num;
 		}
