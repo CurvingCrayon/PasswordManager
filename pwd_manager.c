@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include "encrypt.h"
 
 #define DB_NAME "./database.txt"
 #define MAX_NAME_LENGTH 4
 #define MAX_USER_LENGTH 20
 #define MAX_PASS_LENGTH 20
 #define MAX_SERVICES 100
+#define MAX_ENCRYPT_LENGTH  20
 
 struct service{
 	char name[MAX_NAME_LENGTH+1];
@@ -124,8 +125,15 @@ int input_service(service_t services[], int num_services){
 			
 			char pass_input[MAX_PASS_LENGTH+1];
 			get_input(pass_input, MAX_PASS_LENGTH+1);
-			strncpy(new_service.pass, pass_input, strlen(pass_input));
-			new_service.pass[strlen(pass_input)]='\0';
+			
+			char pass[MAX_ENCRYPT_LENGTH+1];
+			char key[10];
+			encrypt(pass_input, strlen(pass_input), key, pass);
+			pass[strlen(pass_input)] = '\0';
+			printf("ENCRYPTED: %s\n", pass);
+			
+			strncpy(new_service.pass, pass, strlen(pass));
+			new_service.pass[strlen(pass)]='\0';
 			valid = 1;
 		}
 		
