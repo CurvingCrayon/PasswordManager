@@ -23,13 +23,44 @@ char encode(char in){
 	}
 }
 
+char decode(char in){
+	int index = (int) in;
+	if(index > 96 && index < 124){ /*Lowercase input char*/
+		int char_num;
+		for(char_num = 0; char_num < strlen(cipher); char_num++){
+			if(cipher[char_num] == in){
+				return (char) LOWER_OFFSET+char_num;
+			}
+		}
+	}
+	else if(index > 64 && index < 92){ /*Upper case input char*/
+	int char_num;
+		for(char_num = 0; char_num < strlen(cipher2); char_num++){
+			if(cipher2[char_num] == in){
+				return (char) UPPER_OFFSET+char_num;
+			}
+		}
+	}
+	else{
+		return in;
+	}
+	return in;
+}
 int encrypt(char input[], int len, char key[], char output[]){
 	int char_num = 0;
 	for(char_num = 0; char_num < len; char_num++){
 		output[char_num] = encode(input[char_num]);
 	}
 	output[len] = '\0';
-	/*strncpy(output, input, strlen(input));*/
-	return 1;
+	return 1; /*TODO: output encryptions status*/
+}
+
+int decrypt(char input[], int len, char key[], char output[]){
+	int char_num = 0;
+	for(char_num = 0; char_num < len; char_num++){
+		output[char_num] = decode(input[char_num]);
+	}
+	output[len] = '\0';
+	return 1; /*TODO: output decryption status*/
 }
 

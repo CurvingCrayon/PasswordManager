@@ -71,9 +71,10 @@ int get_instruction (void){
 		printf("\n"
 		"1. add a service\n"
 		"2. display all services\n"
-		"3. save the services to the database file\n"
-		"4. load the services from the database file\n"
-		"5. exit the program\n"
+		"3. get service password\n"
+		"4. save the services to the database file\n"
+		"5. load the services from the database file\n"
+		"6. exit the program\n"
 		"Enter choice (number between 1-5)>\n");
 		char command[2];
 		get_input(command, 2); 
@@ -161,6 +162,28 @@ void display_services(service_t services[], int num_services){
 	}
 }
 
+int get_password(service_t services[], int num_services){
+	printf("Enter name of desired service>");
+	char name[MAX_NAME_LENGTH+1];
+	get_input(name, MAX_NAME_LENGTH+1);
+	
+	int service_num;
+	int found = 0;
+	for(service_num = 0; service_num  < num_services; service_num++){
+		if(!strcmp(services[service_num].name, name)){
+			found = 1;
+			char decrypted[MAX_PASS_LENGTH+1];
+			char key[20];
+			decrypt(services[service_num].pass, strlen(services[service_num].pass), key, decrypted);
+			printf("%s\n", decrypted);
+		}
+	}
+	if(!found){
+		printf("Service not found.\n");
+	}
+	return 1;
+}
+
 void save_services(service_t services[], int num_services){
 	FILE* db_file = fopen(DB_NAME, "w"); /*Open file as read text */
 	if(db_file == NULL){ /*If file doesnt exist*/
@@ -230,14 +253,18 @@ int main(){
 			break;
 			
 			case 3:
-				save_services(services, num_services);
+				get_password(services, num_services);
 			break;
 			
 			case 4:
-				num_services = load_services(services, num_services);
+				save_services(services, num_services);
 			break;
 			
 			case 5:
+				num_services = load_services(services, num_services);
+			break;
+			
+			case 6:
 				exit = 1;
 			break;
 			
