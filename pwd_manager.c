@@ -10,12 +10,24 @@
 #define MAX_SERVICES 100
 #define MAX_ENCRYPT_LENGTH  20
 
+#define DEFAULT "\x1B[0m"
+#define RED  "\x1B[31m"
+#define GREEN  "\x1B[32m"
+
 struct service{
 	char name[MAX_NAME_LENGTH+1];
 	char user[MAX_USER_LENGTH+1];
 	char pass[MAX_PASS_LENGTH+1];
-};
+};  
 typedef struct service service_t;
+
+void conceal_input(){
+	system("stty -echo");
+}
+
+void deconceal_input(){
+	system("stty echo");
+}
 
 int check_empty(char str[], int len){
 	int char_num;
@@ -64,18 +76,34 @@ int get_input(char str[], int max_len){ /*Implements fgets to get user input */
 	strncpy(str,input,max_len);
 	return too_large;
 }
-
+void get_enter(){
+	char empty[3];
+	fgets(empty, 3, stdin);
+	int too_large = fix_multi_line(empty, 3, 3);
+	if(too_large){
+		/* Clear input buffer */
+		int buffer_char;
+		int end_of_buffer = 0;
+		while (!end_of_buffer){ 
+			buffer_char = getchar();
+			if(buffer_char == '\n' || buffer_char == EOF){
+				end_of_buffer = 1;
+			}
+		}
+	}
+}
 int get_instruction (void){
 	int valid = 0;
+	
 	while(!valid){ /*Keep asking for input until a valid one is given")*/
-		printf("\n"
+		printf(DEFAULT
 		"1. add a service\n"
 		"2. display all services\n"
 		"3. get service password\n"
 		"4. save the services to the database file\n"
 		"5. load the services from the database file\n"
 		"6. exit the program\n"
-		"Enter choice (number between 1-5)>\n");
+		"Enter choice (number between 1-6)>\n");
 		char command[2];
 		get_input(command, 2); 
 
@@ -85,7 +113,7 @@ int get_instruction (void){
 			return command_num;
 		}
 		else{
-			printf("Invalid choice\n");
+			printf(RED"Invalid choice\n");
 		}
 	}
 	return 0;
@@ -122,20 +150,48 @@ int input_service(service_t services[], int num_services){
 		/*Get service password */
 		valid = 0;
 		while(!valid){
-			printf("Enter password>\n");
+			printf(DEFAULT "Enter password>\n");
 			
 			char pass_input[MAX_PASS_LENGTH+1];
+			conceal_input();
 			get_input(pass_input, MAX_PASS_LENGTH+1);
+			deconceal_input();
 			
+				
 			char pass[MAX_ENCRYPT_LENGTH+1];
 			char key[10];
 			encrypt(pass_input, strlen(pass_input), key, pass);
 			pass[strlen(pass_input)] = '\0';
-			printf("ENCRYPTED: %s\n", pass);
+
+			printf("Confirm password>\n");
 			
-			strncpy(new_service.pass, pass, strlen(pass));
-			new_service.pass[strlen(pass)]='\0';
-			valid = 1;
+			char pass_input2[MAX_PASS_LENGTH+1];
+			conceal_input();
+			get_input(pass_input2, MAX_PASS_LENGTH+1);
+			deconceal_input();
+
+
+			char pass2[MAX_ENCRYPT_LENGTH+1];
+			char key2[10];
+			encrypt(pass_input2, strlen(pass_input2), key2, pass2);
+			pass[strlen(pass_input2)] = '\0';
+			
+
+			/*TODO: compare pass and pass2 and set valid*/
+			if(!strcmp(pass,pass2)){
+				strncpy(new_service.pass, pass2, strlen(pass2));
+				new_service.pass[strlen(pass2)]='\0';
+				
+				valid = 1;
+				
+				printf(GREEN "SUCCESS. Password encrypted as: %s\n", pass);
+				printf(DEFAULT "Press <ENTER> to continue\n");
+				get_enter();
+				system("clear");
+			}
+			else{
+				printf(RED "Passwords do not match.\n");
+			}
 		}
 		
 		/*Append local new_service to services array */
@@ -175,11 +231,16 @@ int get_password(service_t services[], int num_services){
 			char decrypted[MAX_PASS_LENGTH+1];
 			char key[20];
 			decrypt(services[service_num].pass, strlen(services[service_num].pass), key, decrypted);
-			printf("%s\n", decrypted);
+			printf(GREEN "Successfully decrypted.");
+			printf(DEFAULT "%s\n", decrypted);
+			printf("Press <ENTER> to continue\n");
+			get_enter();
 		}
 	}
 	if(!found){
-		printf("Service not found.\n");
+		printf(RED "Service not found.\n");
+		printf("Press <ENTER> to continue\n");
+		get_enter();
 	}
 	return 1;
 }
@@ -236,13 +297,26 @@ int load_services(service_t services[], int num_services){
 }
 
 
-
+int login(){
+	printf("Enter username:>\n");
+	return 1;
+}
 int main(){
+	system("clear");
 	int num_services = 0;
 	service_t services[MAX_SERVICES];
 	int exit = 0;
+	printf("================================\n");
+	printf("Welcome to password manager 1.0\n");
+	printf("================================\n");
+	int first_run = 1;
 	while(!exit){
+		if(!first_run){
+			system("clear");
+		}
+		first_run = 0;
 		int command = get_instruction();
+		
 		switch(command){
 			case 1:
 				num_services = input_service(services, num_services);
