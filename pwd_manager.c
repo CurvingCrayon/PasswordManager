@@ -212,10 +212,17 @@ void print_service(service_t service){
 
 void display_services(service_t services[], int num_services){
 	int service_num;
+	int service_exists = 0;
 	for(service_num = 0; service_num < num_services; service_num++){
+		service_exists = 1;
 		print_service(services[service_num]); /*Print it */
 		printf("\n");
 	}
+	if(!service_exists){
+		printf(RED "No services exist.\n");		
+	}
+	printf(DEFAULT "Press <ENTER> to continue\n");
+	get_enter();
 }
 
 int get_password(service_t services[], int num_services){
@@ -231,7 +238,7 @@ int get_password(service_t services[], int num_services){
 			char decrypted[MAX_PASS_LENGTH+1];
 			char key[20];
 			decrypt(services[service_num].pass, strlen(services[service_num].pass), key, decrypted);
-			printf(GREEN "Successfully decrypted.");
+			printf(GREEN "Successfully decrypted.\n");
 			printf(DEFAULT "%s\n", decrypted);
 			printf("Press <ENTER> to continue\n");
 			get_enter();
@@ -239,7 +246,7 @@ int get_password(service_t services[], int num_services){
 	}
 	if(!found){
 		printf(RED "Service not found.\n");
-		printf("Press <ENTER> to continue\n");
+		printf(DEFAULT "Press <ENTER> to continue\n");
 		get_enter();
 	}
 	return 1;
