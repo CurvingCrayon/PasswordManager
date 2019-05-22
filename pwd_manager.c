@@ -8,6 +8,7 @@
 #define MAX_PASS_LENGTH 20
 #define MAX_SERVICES 100
 #define MAX_ENCRYPT_LENGTH  20
+#define PASS_LEN 10
 
 #define DEFAULT "\x1B[0m"
 #define PURPLE "\x1B[35m"
@@ -15,12 +16,11 @@
 #define GREEN  "\x1B[32m"
 
 #define DEBUG
+
 struct service{
 	char name[MAX_NAME_LENGTH+1];
-	char user[MAX_USER_LENGTH+1];
-	char pass[MAX_PASS_LENGTH+1];
-};  
-typedef struct service service_t;
+	char pass[PASS_LEN];
+}services[MAX_SERVICES];
 
 void conceal_input(){
 	system("stty -echo");
@@ -94,9 +94,36 @@ void get_enter(){
 	}
 }
 
-int check_login(user, pass){
-	return 1;
-}
+int check_login(char user[], char password[]){
+    char db_name[MAX_USER_LENGTH+5];
+    strncpy(db_name, user, strlen(user));
+	db_name[strlen(user)] = '\0';
+	strncat(db_name, ".txt", 5);
+	
+	FILE* db_file = fopen(db_name, "r"); /*Open file as read text */
+	
+	if(db_file == NULL){ /*If file doesn't exist */
+		printf("Read error\n");
+		return 2;
+	}
+	
+	rewind(db_file); /*Point back to start of file */
+	
+	/* Go through each line of the file */
+	char passwordmain[MAX_PASS_LENGTH+1];
+    fscanf(db_file, "%s", passwordmain);
+	fclose(db_file);            	
+    char encodedpass[MAX_PASS_LENGTH+1];    
+    int j;
+    for(j=0; j<MAX_PASS_LENGTH+1; j++){
+        encodedpass[j] = oneway(j,password[j]);
+    }
+    if(strcmp(passwordmain,encodedpass) == 0){
+	    return 1;
+    }
+    else return 0;
+} 
+   
 
 int user_exists(char username[]){
 	
@@ -104,69 +131,76 @@ int user_exists(char username[]){
 	strncpy(db_name, username, strlen(username));
 	db_name[strlen(username)] = '\0';
 	strncat(db_name, ".txt", 5);
-	
-	#ifdef DEBUG
+
 	printf(PURPLE "Looking for DB: %s\n"DEFAULT , db_name);
-	#endif
+
 	
 	FILE* db_file; /*Open file as read text */
 	
 	if(!(db_file = fopen(db_name, "r"))){ /*If file doesnt exist */
-		#ifdef DEBUG
+
 		printf(PURPLE "Not found\n"DEFAULT);
-		#endif
+
 		return 0;
 	}
 	else{
-		#ifdef DEBUG
 		printf(PURPLE "Found\n"DEFAULT);
-		#endif
 		fclose(db_file);
 		return 1;
 	}
 	return 1;
 }
 
+void new_service(char master_password[], char username[]){
+	char db_name[MAX_USER_LENGTH+5];
+	strncpy(db_name, username, strlen(username));
+	db_name[strlen(username)] = '\0';
+	strncat(db_name, ".txt", 5);
+	
+	FILE* db_file = fopen(db_name, "w"); /*Open file as read text */
+	if(db_file == NULL){ /*If file doesnt exist*/
+		printf("Write error\n");
+		return;
+	}
+	fprintf(db_file, "%s\n", master_password);
+    fclose(db_file);
+}
+
+
 int get_user(char current_user[]){
 	int success = 0;
+    char user_input[MAX_NAME_LENGTH+1];
 	while(!success){
-		printf(DEFAULT
-		"Enter username, or enter new a new user to create an account: (type EXIT to exit program)\n");
-		char user_input[MAX_USER_LENGTH+1];
-		get_input(user_input, MAX_USER_LENGTH+1); 
-		#ifdef DEBUG
-		printf(PURPLE "Input: %s\n" DEFAULT, user_input);
-		#endif
 		int new_user = 0;
 		int old_user = 0;
 		/*See if username already exists by checking db file names */
-		if(!strcmp("EXIT", user_input)){
+		if(!strcmp("EXIT", current_user)){
 			return 0;
 		}
-		if(!user_exists(user_input)){ /*If user doesnt exist*/
-			printf("User %s doesn't exist. Create new user? (y/n)\n", user_input);
+		if(!user_exists(current_user)){ /*If user doesnt exist*/
+			printf("User %s does not exist. Do you want to create new user? (Y/N)\n", current_user);
 			int valid_bool = 0;
 			while(!valid_bool){
 				char input[2];
 				get_input(input, 2);
 				
-				if(input[0] == 'y'){
-					strncpy(current_user, user_input, strlen(user_input));
+				if(input[0] == 'Y'){
+					strncpy(user_input, current_user, strlen(current_user));
 					current_user[strlen(user_input)] = '\0';
 					new_user = 1;
 					valid_bool = 1;
 				}
-				else if(input[0] == 'n'){
+				else if(input[0] == 'N'){
 					/*This results in returning to outer while loop*/
-					valid_bool = 1;
+					return -1;
 				}
 				else{
-					printf(RED "Invalid input\n" DEFAULT);
+					printf(RED "Invalid input, please try Y or N\n" DEFAULT);
 				}
 			}
 		}
 		else{
-			strncpy(current_user, user_input, strlen(user_input));
+			strncpy(user_input, current_user, strlen(current_user));
 			current_user[strlen(user_input)] = '\0';
 			old_user = 1;
 		}
@@ -189,6 +223,21 @@ int get_user(char current_user[]){
 				if(!strcmp(pwd1, pwd2)){ /*If passwords match*/
 					strncpy(password, pwd1, strlen(pwd1)); /*Copy new password to "get_user" scope*/
 					valid_pwd = 1;
+                    char coded[strlen(pwd2)];
+                    int j;
+                    for(j=0; j<MAX_PASS_LENGTH+1; j++){
+                        coded[j] = oneway(j,pwd2[j]);
+                    }
+                    new_service(coded, current_user); /*Creates new databse file*/
+				    printf(GREEN "Account creation successful! Press <ENTER> to continue.\n");
+                    int g = (int)(sizeof(coded)/sizeof(coded[0]));                               
+                    printf("%i\n",g);
+                    for(j=0; j<g; j++){
+                        printf("%c",coded[j]);
+                    }
+				    get_enter();
+                    success = 1;
+                    return 2;
 				}
 				else{
 					printf(RED "Passwords do not match.\n");
@@ -201,128 +250,117 @@ int get_user(char current_user[]){
 			conceal_input();
 			get_input(pass_input, MAX_PASS_LENGTH+1);
 			deconceal_input();
-			strncpy(password, pass_input, strlen(pass_input));
-			password[strlen(pass_input)] = '\0';
-		}
-		
-		if(new_user || old_user){
-			/*Check login details*/
-			success = check_login(user_input, password);
+			success = check_login(current_user, pass_input);
 			if(success){
 				printf(GREEN "Login succesful! Press <ENTER> to continue.\n");
 				get_enter();
 				success = 1;
-				return new_user + 1; /* 1 for old user, 2 for new user*/
+				return 1; /* 1 for old user, 2 for new user*/
 			}
 			else{
-				printf(RED "Login unsuccesful.\n");
+				printf(RED "Login unsuccesful. Please try again.\n");
 			}
 		}
 	}
 	return 0;
 }
 
-int input_service(service_t services[], int num_services){
-	if(num_services < MAX_SERVICES){
-		service_t new_service;
-		/*Get service name */
-		int valid = 0;
-		while(!valid){
-			printf("Enter service name>\n");
-			
-			char pass_input[MAX_NAME_LENGTH+1];
-			get_input(pass_input, MAX_NAME_LENGTH+1);
-			strncpy(new_service.name, pass_input, strlen(pass_input));
-			new_service.name[strlen(pass_input)]='\0';
-			valid = 1;
-		}
-		
-		/*Get service username */
-		valid = 0;
-		while(!valid){
-			printf("Enter username>\n");
-			
-			char user_input[MAX_USER_LENGTH+1];
-			get_input(user_input, MAX_USER_LENGTH+1);
-			strncpy(new_service.user, user_input, strlen(user_input));
-			new_service.user[strlen(user_input)]='\0';
-			valid = 1;
-		}
-		
-		/*Get service password */
-		valid = 0;
-		while(!valid){
-			printf(DEFAULT "Enter password>\n");
-			
-			char pass_input[MAX_PASS_LENGTH+1];
-			conceal_input();
-			get_input(pass_input, MAX_PASS_LENGTH+1);
-			deconceal_input();
-			
-				
-			char pass[MAX_ENCRYPT_LENGTH+1];
-			char key[10];
-			encrypt(pass_input, strlen(pass_input), key, pass);
-			pass[strlen(pass_input)] = '\0';
+int input_service(char username[], int num_services){
+    char pass_input[MAX_NAME_LENGTH+1];
+    char newpass[PASS_LEN];
+    int p;
+    p = num_services;
+    int i = 0;
+    if(num_services < MAX_SERVICES){
+		printf("Enter service name>\n");	
+		get_input(pass_input, MAX_NAME_LENGTH);          
+        char a;        
+        for(i=0; i < PASS_LEN; i++){        
+            int j; 
+            int k;
+            int l;
+            int m;           
+            int n;
+            for(j=0; j<strlen(pass_input); j++){
+                for(m=0; m<strlen(username); m++){
+                    int l = (int)username[m];
+                    srand(l);
+                    n = n+ rand();
+                }                
+                int f = (int)pass_input[j];
+                srand(f);
+                k = k + rand() + num_services;
+            }
+            k = k + n;
+            k = k%2000;
+            srand(k);            
+            a = rand()%20;             
+            newpass[i] = a + 97;
+            
+        }		
+        printf("Your new password is: ");
+        for(i=0; i < PASS_LEN; i++){         
+            printf("%c", newpass[i]);
+        }
+        printf("\n");
 
-			printf("Confirm password>\n");
-			
-			char pass_input2[MAX_PASS_LENGTH+1];
-			conceal_input();
-			get_input(pass_input2, MAX_PASS_LENGTH+1);
-			deconceal_input();
-
-
-			char pass2[MAX_ENCRYPT_LENGTH+1];
-			char key2[10];
-			encrypt(pass_input2, strlen(pass_input2), key2, pass2);
-			pass[strlen(pass_input2)] = '\0';
-			
-
-			/*TODO: compare pass and pass2 and set valid*/
-			if(!strcmp(pass,pass2)){
-				strncpy(new_service.pass, pass2, strlen(pass2));
-				new_service.pass[strlen(pass2)]='\0';
-				
-				valid = 1;
-				
-				printf(GREEN "SUCCESS. Password encrypted as: %s\n", pass);
-				printf(DEFAULT "Press <ENTER> to continue\n");
-				get_enter();
-				system("clear");
-			}
-			else{
-				printf(RED "Passwords do not match.\n");
-			}
-		}
-		
-		/*Append local new_service to services array */
-		
-		services[num_services] = new_service;
-		return num_services + 1;
+		strncpy(services[p].pass, newpass, sizeof(newpass));
+        services[num_services].pass[PASS_LEN]='\0';  
+        strncpy(services[p].name, pass_input, sizeof(pass_input)); 
+		services[p].name[MAX_NAME_LENGTH+1]='\0'; 
 	}
-	else{
-		printf("Cannot add more services - memory full\n");	
-		return num_services;
+    char db_name[MAX_USER_LENGTH+5];
+	strncpy(db_name, username, strlen(username));
+	db_name[strlen(username)] = '\0';
+	strncat(db_name, ".txt", 5);
+	FILE* db_file = fopen(db_name, "a"); /*Open file as read text */	
+	if(db_file == NULL){ /*If file doesn't exist */
+		printf("Read error\n");
+    
 	}
-	return num_services;
+    char encoded_pass[PASS_LEN];
+    for(i=0; i<PASS_LEN; i++){
+        encoded_pass[i]=encode(newpass[i]);
+    }
+    fprintf(db_file, "%s %s\n", pass_input, encoded_pass);
+    printf("%s\n", encoded_pass);
+    fclose(db_file);
+    if (num_services>1){    
+        printf("OLD Password %s\n", services[num_services-1].pass); 
+        printf("%i\n",p);
+    }
+    get_enter();
+    return num_services+1;
+    /*char db_name[MAX_USER_LENGTH+5];
+	strncpy(db_name, username, strlen(username));
+	db_name[strlen(username)] = '\0';
+    strncat(db_name, ".txt", 5);
+    FILE *db;
+    db = fopen(db_name, "w"); /*Open file as write text */
+	/*fseek(db,0, SEEK_END);
+    printf("%s %s", pass_input, newpass);
+    fclose(db);
+    return num_services+1;*/
 }
 
-void print_service(service_t service){
-	printf("%s   %s    %s",service.name, service.user, service.pass);
+void print_service(int num_services){
+	printf("%s %s",services[num_services].name, services[num_services].pass);
 }
 
-void display_services(service_t services[], int num_services){
+void display_services (int num_services){
 	int service_num;
-	for(service_num = 0; service_num < num_services; service_num++){
-		print_service(services[service_num]); /*Print it */
-		printf("\n");
-	}
+    if(num_services > 0){
+    	for(service_num = 0; service_num < num_services; service_num++){	
+            print_service(service_num); /*Print it */
+	    	printf("\n");
+	    }
+    }
+    else printf("No passwords currently saved.\n");
 	printf("Press <ENTER> to return to command page.\n");
 	get_enter();
 }
 
-int get_password(service_t services[], int num_services){
+int get_password(int num_services){
 	printf("Enter name of desired service>");
 	char name[MAX_NAME_LENGTH+1];
 	get_input(name, MAX_NAME_LENGTH+1);
@@ -349,27 +387,15 @@ int get_password(service_t services[], int num_services){
 	return 1;
 }
 
-void save_services(char username[], service_t services[], int num_services){
-	char db_name[MAX_USER_LENGTH+5];
-	strncpy(db_name, username, strlen(username));
-	db_name[strlen(username)] = '\0';
-	strncat(db_name, ".txt", 5);
-	
-	FILE* db_file = fopen(db_name, "w"); /*Open file as read text */
-	if(db_file == NULL){ /*If file doesnt exist*/
-		printf("Write error\n");
-		return;
-	}
-	int service_num;
-	for(service_num = 0; service_num < num_services; service_num++){
-		service_t sv = services[service_num];
-		fprintf(db_file, "%s %s %s\n", sv.name, sv.user, sv.pass);
-	}
-	fclose(db_file);
+
+
+void save_services(char username[], int num_services){
+    
 }
 
-int load_services(char username[], service_t services[], int num_services){
-	char db_name[MAX_USER_LENGTH+5];
+int load_services(char username[], int num_services){
+    	
+    char db_name[MAX_USER_LENGTH+5];
 	strncpy(db_name, username, strlen(username));
 	db_name[strlen(username)] = '\0';
 	strncat(db_name, ".txt", 5);
@@ -378,10 +404,11 @@ int load_services(char username[], service_t services[], int num_services){
 	
 	if(db_file == NULL){ /*If file doesn't exist */
 		printf("Read error\n");
-		return num_services;
 	}
-	
-	/*Get number of lines in file*/
+	char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    /*Get number of lines in file*/
 	int num_lines = 0;
 	while( !feof(db_file) ){
 		char next_char = fgetc(db_file);
@@ -396,36 +423,32 @@ int load_services(char username[], service_t services[], int num_services){
 	int new_num_services = 0;
 	int line_num;
 	for(line_num = 0; line_num < MAX_SERVICES; line_num++){
-		if(line_num < num_lines){ /*If there is still data left in file*/
-			service_t sv;
-			fscanf(db_file, "%s %s %s", sv.name, sv.user, sv.pass);
-			services[line_num] = sv;
+        read = getline(&line, &len, db_file);
+		if(line_num != 0 && line_num < num_lines){ /*If there is still data left in file*/
+			fscanf(db_file, "%s %s", services[line_num].name, services[line_num].pass);
 			new_num_services++;
-		}
-		else{
-			break;
 		}
 	}
 	fclose(db_file);
-	return new_num_services;
+    return new_num_services;
 }
 
 int get_instruction (void){
 	int valid = 0;
 	while(!valid){ /*Keep asking for input until a valid one is given")*/
 		printf(DEFAULT
-		"1. add a service\n"
-		"2. display all services\n"
-		"3. get service password\n"
-		"4. logout\n"
-		"5. exit the program\n"
-		"Enter choice (number between 1-5)>\n");
+		"1. Create new password.\n"
+		"2. Display all stored passwords.\n"
+		"3. Get specific password.\n"
+		"4. Logout.\n"
+		"Please enter a choice (Number between 1 & 4) :\n");
 		char command[2];
 		get_input(command, 2); 
 
 		int command_num = atoi(command);
 		if(command_num > 0 && command_num < 6){ /*Check command_num is between 1 and 5*/
 			valid = 1;
+
 			return command_num;
 		}
 		else{
@@ -435,72 +458,90 @@ int get_instruction (void){
 	return 1;
 }
 
+/* Debugging only, Please ignore*/
+
+void debug(char name[], int num){
+    int i;
+    printf("%i\n", num);
+    printf("%s\n", name);    
+    for(i=0; i<num; i++){
+        printf("%s\n",services[i].name);
+    }
+    for(i=0; i<num; i++){
+        printf("%s\n",services[i].pass);
+    }
+    get_enter();
+}
+     
+
 int main(){
-	system("clear");
+    start:	
+    system("clear");
 	int num_services = 0;
-	service_t services[MAX_SERVICES];
 	int run = 1;
 	printf("================================\n");
 	printf("Welcome to password manager 2.0\n");
 	printf("================================\n");
 	int first_run = 1;
+    int stop = 1;
 	while(run){
 		if(!first_run){
 			system("clear");
 		}
-		first_run = 0;
-		
-		char username[MAX_USER_LENGTH+1]; 
-		int status = get_user(username);
+		first_run = 0;		
+        printf(DEFAULT
+		"Enter username, or enter new a new user to create an account: (type EXIT to exit program)\n");
+		char user_input[MAX_USER_LENGTH+1];
+		get_input(user_input, MAX_USER_LENGTH+1); 
+
+		printf(PURPLE "Input: %s\n" DEFAULT, user_input);
+
 		/*STATUSES: 0 = exit, 1 = old user, 2 = new user */
-		
-		#ifdef DEBUG
+		int status = get_user(user_input);
 		system("clear");
 		printf(PURPLE "Logged in with status %d\n" DEFAULT, status);
-		#endif
 		if(status == 0){ 
 			run = 0;
 			break;
 		}
-		else if(status == 2){
-			save_services(username, services, 0); /*Creates new databse file*/
+        if(status == -1){ 
+			goto start;
 		}
+        if(stop){        
+            num_services = load_services(user_input, num_services);
+            stop =0;
+        }
 		int logged_in = 1;
 		while(logged_in){
-			
-			#ifndef DEBUG
-				system("clear");
-			#endif
-			num_services = load_services(username, services, num_services);
-			
+			system("clear");
+            int i = 0;
 			int command = get_instruction();
-			#ifdef DEBUG
-			printf("Command #: %d", command);
-			#endif
-			
+			/*printf("Command #: %d", command);*/
+
 			switch(command){
 				case 1:
-					num_services = input_service(services, num_services);
-					save_services(username, services, num_services);
+					num_services = input_service(user_input, num_services);
 				break;
 				
 				case 2:
-					display_services(services, num_services);
+					display_services(num_services);
 				break;
 				
 				case 3:
-					get_password(services, num_services);
+					get_password(num_services);
 				break;
 				
 				case 4:
 					logged_in = 0;
+                    stop=1;
 					printf("Logging out.\n");
 				break;
-				
-				case 5:
-					run = 0;
-				break;
-				
+
+                case 5:
+                    printf("Debug Only. Please ignore");
+                    debug(user_input, num_services);
+                break;
+
 				default:
 					printf("Error: invalid command entered, exiting program.");
 					return 1;
