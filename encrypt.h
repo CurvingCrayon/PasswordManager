@@ -10,6 +10,25 @@
 char cipher[] = "zyxwvutsrqponmlkjihgfedbca\0";
 char cipher2[] = "ZYXWVUTSRQPONMLKJIHGFEDBCA\0";
 
+char oneway(int count, char in){
+    int index = (int) in;
+    if(index > 96 && index < 124){    
+        srand(index+count);
+        index = rand();
+        int index2;        
+        index2 = index%20;
+        index = index2 + 97;
+    }
+    if(index > 64 && index < 92){
+        srand(index+count);
+        index = rand();
+        int index2;        
+        index2 = index%20;
+        index = index2 + 65;
+    }
+    return index;
+}
+
 char encode(char in){
 	int index = (int) in;
 	if(index > 96 && index < 124){ /*Lowercase input char*/

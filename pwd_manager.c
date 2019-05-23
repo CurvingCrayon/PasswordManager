@@ -8,7 +8,7 @@
 #define MAX_PASS_LENGTH 20
 #define MAX_SERVICES 100
 #define MAX_ENCRYPT_LENGTH  20
-#define PASS_LEN 10
+#define PASS_LEN 12
 
 #define DEFAULT "\x1B[0m"
 #define PURPLE "\x1B[35m"
@@ -19,7 +19,7 @@
 
 struct service{
 	char name[MAX_NAME_LENGTH+1];
-	char pass[PASS_LEN];
+	char pass[PASS_LEN+1];
 }services[MAX_SERVICES];
 
 void conceal_input(){
@@ -73,8 +73,8 @@ int get_input(char str[], int max_len){ /*Implements fgets to get user input */
 	if(strlen(input) == 0 || check_empty(input,strlen(input))){
 		get_input(input, max_len); /*Call this function again*/
 	}
-	input[max_len-1] = '\0';
-	strncpy(str,input,max_len);
+	input[max_len+1] = '\0';
+	strncpy(str,input,max_len+1);
 	return too_large;
 }
 void get_enter(){
@@ -110,7 +110,7 @@ int check_login(char user[], char password[]){
 	rewind(db_file); /*Point back to start of file */
 	
 	/* Go through each line of the file */
-	char passwordmain[MAX_PASS_LENGTH+1];
+    char passwordmain[MAX_PASS_LENGTH+1];
     fscanf(db_file, "%s", passwordmain);
 	fclose(db_file);            	
     char encodedpass[MAX_PASS_LENGTH+1];    
@@ -168,7 +168,7 @@ void new_service(char master_password[], char username[]){
 
 
 int get_user(char current_user[]){
-	int success = 0;
+    int success = 0;
     char user_input[MAX_NAME_LENGTH+1];
 	while(!success){
 		int new_user = 0;
@@ -267,22 +267,22 @@ int get_user(char current_user[]){
 
 int input_service(char username[], int num_services){
     char pass_input[MAX_NAME_LENGTH+1];
-    char newpass[PASS_LEN];
+    char newpass[PASS_LEN+1];
     int p;
     p = num_services;
     int i = 0;
     if(num_services < MAX_SERVICES){
-		printf("Enter service name>\n");	
-		get_input(pass_input, MAX_NAME_LENGTH);          
+	printf("Enter service name>\n");	
+	get_input(pass_input, MAX_NAME_LENGTH);          
         char a;        
-        for(i=0; i < PASS_LEN; i++){        
+        for(i=0; i < sizeof(newpass-1); i++){        
             int j; 
             int k;
             int l;
             int m;           
             int n;
-            for(j=0; j<strlen(pass_input); j++){
-                for(m=0; m<strlen(username); m++){
+            for(j=0; j<sizeof(newpass-1); j++){
+                for(m=0; m<sizeof(username); m++){
                     int l = (int)username[m];
                     srand(l);
                     n = n+ rand();
@@ -296,18 +296,14 @@ int input_service(char username[], int num_services){
             srand(k);            
             a = rand()%20;             
             newpass[i] = a + 97;
-            
         }		
         printf("Your new password is: ");
-        for(i=0; i < PASS_LEN; i++){         
+        for(i=0; i < sizeof(newpass); i++){         
             printf("%c", newpass[i]);
         }
-        printf("\n");
-
-		strncpy(services[p].pass, newpass, sizeof(newpass));
-        services[num_services].pass[PASS_LEN]='\0';  
+        printf("\n"); 
         strncpy(services[p].name, pass_input, sizeof(pass_input)); 
-		services[p].name[MAX_NAME_LENGTH+1]='\0'; 
+	services[p].name[MAX_NAME_LENGTH+1]='\0'; 
 	}
     char db_name[MAX_USER_LENGTH+5];
 	strncpy(db_name, username, strlen(username));
@@ -318,10 +314,12 @@ int input_service(char username[], int num_services){
 		printf("Read error\n");
     
 	}
-    char encoded_pass[PASS_LEN];
-    for(i=0; i<PASS_LEN; i++){
+    char encoded_pass[sizeof(newpass)];
+    for(i=0; i<sizeof(newpass); i++){
         encoded_pass[i]=encode(newpass[i]);
+        services[num_services].pass[i]=encoded_pass[i];
     }
+    services[num_services].pass[sizeof(newpass+1)]='\0';
     fprintf(db_file, "%s %s\n", pass_input, encoded_pass);
     printf("%s\n", encoded_pass);
     fclose(db_file);
@@ -331,24 +329,18 @@ int input_service(char username[], int num_services){
     }
     get_enter();
     return num_services+1;
-    /*char db_name[MAX_USER_LENGTH+5];
-	strncpy(db_name, username, strlen(username));
-	db_name[strlen(username)] = '\0';
-    strncat(db_name, ".txt", 5);
-    FILE *db;
-    db = fopen(db_name, "w"); /*Open file as write text */
-	/*fseek(db,0, SEEK_END);
-    printf("%s %s", pass_input, newpass);
-    fclose(db);
-    return num_services+1;*/
 }
 
 void print_service(int num_services){
-	printf("%s %s",services[num_services].name, services[num_services].pass);
+	int i;
+        printf("%s ", services[num_services].name);
+        for(i=0; i<sizeof(services[num_services].pass); i++){
+            printf("%c", decode(services[num_services].pass[i]));
+        }
 }
 
 void display_services (int num_services){
-	int service_num;
+    int service_num;
     if(num_services > 0){
     	for(service_num = 0; service_num < num_services; service_num++){	
             print_service(service_num); /*Print it */
@@ -533,12 +525,12 @@ int main(){
 				
 				case 4:
 					logged_in = 0;
-                    stop=1;
+                                        stop=1;
 					printf("Logging out.\n");
 				break;
 
-                case 5:
-                    printf("Debug Only. Please ignore");
+                                case 5:
+                                    printf("Debug Only. Please ignore");
                     debug(user_input, num_services);
                 break;
 
