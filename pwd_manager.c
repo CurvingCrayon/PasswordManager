@@ -15,6 +15,7 @@
 #define GREEN  "\x1B[32m"
 
 #define DEBUG
+
 struct service{
 	char name[MAX_NAME_LENGTH+1];
 	char user[MAX_USER_LENGTH+1];
@@ -110,14 +111,14 @@ int user_exists(char username[]){
 	#endif
 	
 	FILE* db_file; /*Open file as read text */
-	
-	if(!(db_file = fopen(db_name, "r"))){ /*If file doesnt exist */
+	db_file = fopen(db_name, "r");
+	if(!db_file){ /*If file doesnt exist */
 		#ifdef DEBUG
-		printf(PURPLE "Not found\n"DEFAULT);
+		printf(PURPLE "Not found\n" DEFAULT);
 		#endif
 		return 0;
 	}
-	else{
+	else{ /*If file does exist*/
 		#ifdef DEBUG
 		printf(PURPLE "Found\n"DEFAULT);
 		#endif
@@ -278,8 +279,6 @@ int input_service(service_t services[], int num_services){
 			encrypt(pass_input2, strlen(pass_input2), key2, pass2);
 			pass[strlen(pass_input2)] = '\0';
 			
-
-			/*TODO: compare pass and pass2 and set valid*/
 			if(!strcmp(pass,pass2)){
 				strncpy(new_service.pass, pass2, strlen(pass2));
 				new_service.pass[strlen(pass2)]='\0';
@@ -289,7 +288,9 @@ int input_service(service_t services[], int num_services){
 				printf(GREEN "SUCCESS. Password encrypted as: %s\n", pass);
 				printf(DEFAULT "Press <ENTER> to continue\n");
 				get_enter();
+				#ifndef DEBUG
 				system("clear");
+				#endif
 			}
 			else{
 				printf(RED "Passwords do not match.\n");
@@ -309,16 +310,21 @@ int input_service(service_t services[], int num_services){
 }
 
 void print_service(service_t service){
+	/*TODO: only print service name*/
 	printf("%s   %s    %s",service.name, service.user, service.pass);
 }
 
 void display_services(service_t services[], int num_services){
 	int service_num;
+	printf("===========================\n"
+			"Service\n"
+			"===========================\n");
 	for(service_num = 0; service_num < num_services; service_num++){
 		print_service(services[service_num]); /*Print it */
 		printf("\n");
 	}
-	printf("Press <ENTER> to return to command page.\n");
+	printf("===========================\n");
+	printf(GREEN"Press <ENTER> to return to command page.\n"DEFAULT);
 	get_enter();
 }
 
@@ -436,7 +442,9 @@ int get_instruction (void){
 }
 
 int main(){
+	#ifndef DEBUG
 	system("clear");
+	#endif
 	int num_services = 0;
 	service_t services[MAX_SERVICES];
 	int run = 1;
@@ -445,9 +453,13 @@ int main(){
 	printf("================================\n");
 	int first_run = 1;
 	while(run){
+		
 		if(!first_run){
+			#ifndef DEBUG
 			system("clear");
+			#endif
 		}
+		
 		first_run = 0;
 		
 		char username[MAX_USER_LENGTH+1]; 
@@ -455,7 +467,6 @@ int main(){
 		/*STATUSES: 0 = exit, 1 = old user, 2 = new user */
 		
 		#ifdef DEBUG
-		system("clear");
 		printf(PURPLE "Logged in with status %d\n" DEFAULT, status);
 		#endif
 		if(status == 0){ 
@@ -475,7 +486,7 @@ int main(){
 			
 			int command = get_instruction();
 			#ifdef DEBUG
-			printf("Command #: %d", command);
+			printf(PURPLE "Command #: %d\n"DEFAULT, command);
 			#endif
 			
 			switch(command){
@@ -493,11 +504,13 @@ int main(){
 				break;
 				
 				case 4:
+					/*Re-enter login loop*/
 					logged_in = 0;
 					printf("Logging out.\n");
 				break;
 				
 				case 5:
+					/*Exit program loop*/
 					run = 0;
 				break;
 				
